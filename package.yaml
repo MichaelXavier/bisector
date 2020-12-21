@@ -1,0 +1,17 @@
+name: bisector
+synopsis: A little command line tool that finds where in a sequence of versions something broke. Like git bisect without git.
+
+ghc-options: -Wall -Werror
+
+default-extensions:
+  - NoImplicitPrelude
+  - OverloadedStrings
+
+dependencies:
+  - base
+  - relude
+  - text
+
+executables:
+  bisector:
+    main: Main.hs
