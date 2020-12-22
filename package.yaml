@@ -6,11 +6,17 @@ ghc-options: -Wall -Werror
 default-extensions:
   - NoImplicitPrelude
   - OverloadedStrings
+  - DerivingStrategies
+  - RecordWildCards
 
 dependencies:
   - base
   - relude
-  - text
+  - containers
+  - errors
+  - tasty
+  - tasty-hedgehog
+  - hedgehog
 
 executables:
   bisector:
