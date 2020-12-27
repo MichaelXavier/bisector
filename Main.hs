@@ -1,51 +1,72 @@
 module Main where
 
 import qualified Control.Error as E
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Sequence as Seq
 import qualified Hedgehog as HH
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
+import qualified Options.Applicative as O
 import Relude
-import qualified System.Environment as Env
 import qualified Test.Tasty as Tasty
 import qualified Test.Tasty.Hedgehog as Tasty
 
---TODO: nicer output
 --TODO: consider script
---TODO: flags
 main :: IO ()
 main = do
-  versions <- Env.getArgs
-  case nonEmpty versions of
-    Nothing -> error "Pass at least 1 version number argument"
-    Just nonE -> do
-      firstBad <- run id getAssessmentStdin nonE
-      putStrLn ("First bad version is " <> firstBad)
+  Flags {..} <- O.execParser flagsParserInfo
+  let verboseLogger = if flags_verbose then putStrLn else squelchedLogger
+  firstBad <- run verboseLogger id getAssessmentStdin flags_versions
+  putStrLn ("First bad version is " <> firstBad)
+
+data Flags = Flags
+  { flags_verbose :: Bool,
+    flags_versions :: NonEmpty String
+  }
+
+flagsParserInfo :: O.ParserInfo Flags
+flagsParserInfo =
+  O.info
+    (flagsParser <**> O.helper)
+    ( O.fullDesc
+        <> O.progDesc "Find the earliest \"bad\" version given a known good and known bad version. The first argument must be known good, the last must be known bad. The program assumes that the versions don't oscillate between good and bad."
+    )
+
+flagsParser :: O.Parser Flags
+flagsParser =
+  Flags
+    <$> O.switch (O.long "verbose")
+    -- We can safely use NE.fromList here because we're using some
+    <*> (NE.fromList <$> some (O.strArgument (O.metavar "VERSIONS")))
 
 run ::
+  (Monad m) =>
+  (String -> m ()) ->
   (a -> String) ->
-  (a -> IO Assessment) ->
+  (a -> m Assessment) ->
   NonEmpty a ->
-  IO a
-run showA getAssessment nonE = do
+  m a
+run verboseLogger showA getAssessment nonE = do
   let earliestBad = last nonE
   let others = Seq.fromList (init nonE)
   case binarySplit earliestBad others of
     Nothing -> pure earliestBad
     Just split -> do
-      run' showA getAssessment split
+      run' verboseLogger showA getAssessment split
 
 run' ::
+  (Monad m) =>
+  (String -> m ()) ->
   (a -> String) ->
-  (a -> IO Assessment) ->
+  (a -> m Assessment) ->
   Split a ->
-  IO a
-run' showA getAssessment split@Split {..} = do
-  print (showSplit showA split)
+  m a
+run' verboseLogger showA getAssessment split@Split {..} = do
+  verboseLogger (showSplit showA split)
   assessment <- getAssessment split_focus
   case assess assessment split of
     Left (Exhausted a) -> pure a
-    Right newSplit -> run' showA getAssessment newSplit
+    Right newSplit -> run' verboseLogger showA getAssessment newSplit
 
 data Split a = Split
   { split_older :: Seq.Seq a,
@@ -110,6 +131,10 @@ binarySplit earliestBad sq
                   }
 
 -------------------------------------------------------------------------------
+squelchedLogger :: (Applicative m) => a -> m ()
+squelchedLogger _ = pure ()
+
+-------------------------------------------------------------------------------
 testMain :: IO ()
 testMain = Tasty.defaultMain tests
 
@@ -123,7 +148,7 @@ tests =
           bads <- fmap TestValue_Bad . toList <$> HH.forAll (Gen.set (Range.linear 1 20) genStr)
           let Just firstBad = E.headMay bads
           let Just nonE = nonEmpty (goods <> bads)
-          res <- liftIO (run show (pure . checkGood) nonE)
+          res <- liftIO (run squelchedLogger show (pure . checkGood) nonE)
           res HH.=== firstBad
     ]
   where

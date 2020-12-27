@@ -17,6 +17,7 @@ dependencies:
   - tasty
   - tasty-hedgehog
   - hedgehog
+  - optparse-applicative
 
 executables:
   bisector:
