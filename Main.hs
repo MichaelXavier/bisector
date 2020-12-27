@@ -35,7 +35,7 @@ flagsParserInfo =
 flagsParser :: O.Parser Flags
 flagsParser =
   Flags
-    <$> O.switch (O.long "verbose")
+    <$> O.switch (O.long "verbose" <> O.help "Add verbose state logging.")
     -- We can safely use NE.fromList here because we're using some
     <*> (NE.fromList <$> some (O.strArgument (O.metavar "VERSIONS")))
 
