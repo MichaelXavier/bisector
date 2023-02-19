@@ -1,7 +1,16 @@
 name: bisector
 synopsis: A little command line tool that finds where in a sequence of versions something broke. Like git bisect without git.
 
-ghc-options: -Wall -Werror
+ghc-options: -Wall
+
+flags:
+  lib-Werror:
+    default: False
+    manual: True
+
+when:
+  - condition: flag(lib-Werror)
+    ghc-options: flag(lib-Werror)
 
 default-extensions:
   - NoImplicitPrelude

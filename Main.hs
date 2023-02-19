@@ -146,8 +146,8 @@ tests =
         HH.property $ do
           goods <- fmap TestValue_Good . toList <$> HH.forAll (Gen.set (Range.linear 0 20) genStr)
           bads <- fmap TestValue_Bad . toList <$> HH.forAll (Gen.set (Range.linear 1 20) genStr)
-          let Just firstBad = E.headMay bads
-          let Just nonE = nonEmpty (goods <> bads)
+          let firstBad = fromMaybe (error "firstBad") (E.headMay bads)
+          let nonE = fromMaybe (error "nonE") (nonEmpty (goods <> bads))
           res <- liftIO (run squelchedLogger show (pure . checkGood) nonE)
           res HH.=== firstBad
     ]

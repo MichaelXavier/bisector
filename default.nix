@@ -1,6 +1,4 @@
-{ system ? builtins.currentSystem or "x86_64-linux"
-, ghc ? "ghc884"
-}:
+{ system ? builtins.currentSystem or "x86_64-linux", ghc ? "ghc902" }:
 
 #TODO: niv
 let
@@ -20,34 +18,26 @@ let
   # Haskell package set overlay containing overrides for newer packages than
   # are included in the base nixpkgs set as well as additions from vendored
   # or external source repositories.
-  haskellPkgSetOverlay = pkgs.callPackage ./nix/haskell/overlay.nix { inherit (nix) sources; };
+  haskellPkgSetOverlay =
+    pkgs.callPackage ./nix/haskell/overlay.nix { inherit (nix) sources; };
 
-  bisectorOverlay = pkgs.callPackage ./nix/haskell/bisector.nix { inherit (nix) sources; };
+  bisectorOverlay =
+    pkgs.callPackage ./nix/haskell/bisector.nix { inherit (nix) sources; };
 
-   # Construct the final Haskell package set
-  haskellPkgs = baseHaskellPkgs.override (
-    old: {
-      overrides = builtins.foldl' pkgs.lib.composeExtensions
-        (old.overrides or (_: _: {})) [
-          haskellPkgSetOverlay
-          bisectorOverlay
-        ];
-    }
-  );
+  # Construct the final Haskell package set
+  haskellPkgs = baseHaskellPkgs.override (old: {
+    overrides = builtins.foldl' pkgs.lib.composeExtensions
+      (old.overrides or (_: _: { })) [ haskellPkgSetOverlay bisectorOverlay ];
+  });
 
   shell = haskellPkgs.shellFor {
-    packages = p: [
-      p.bisector
-    ];
+    packages = p: [ p.bisector ];
 
     withHoogle = true;
 
     # include any recommended tools
-    nativeBuildInputs = [
-      haskellPkgs.ghcid
-      haskellPkgs.hpack
-      haskellPkgs.cabal-install
-    ];
+    nativeBuildInputs =
+      [ haskellPkgs.ghcid haskellPkgs.hpack haskellPkgs.cabal-install ];
 
     # Ensure that the cabal file is present for cabal package's flags
     # are respected by configuring. We add on a flag to disable writing
@@ -59,9 +49,7 @@ let
       hpack package.yaml
       # turn abort on errors off
       set +e
-      '';
+    '';
   };
 
-in {
-  inherit shell;
-}
+in { inherit shell; }
